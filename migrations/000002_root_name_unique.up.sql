@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX objects_root_name_uidx ON objects (owner_id, name) WHERE parent_id IS NULL;

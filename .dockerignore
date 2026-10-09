@@ -1,0 +1,9 @@
+.git
+.idea
+.env
+deploy/data
+deploy/logs
+docs
+*.md
+build/Dockerfile
+docker-compose.yaml

@@ -1,0 +1,1 @@
+DROP INDEX IF EXISTS objects_root_name_uidx;
