@@ -10,11 +10,15 @@ spec:
       labels:
         app: migrate
     spec:
+      initContainers:
+        - name: wait-for-postgres
+          image: postgres:alpine
+          command: [ "/bin/sh", "-c", "until pg_isready -h postgres -p 5432; do sleep 1; done" ]
       containers:
         - name: migrate
           image: myapp-backend:latest
           imagePullPolicy: Never
-          command: [ "/bin/sh", "-c", "until nc -z postgres 5432; do sleep 1; done && /usr/local/bin/server migrate" ]
+          command: [ "/usr/local/bin/server", "migrate" ]
           envFrom:
             - configMapRef:
                 name: app-config

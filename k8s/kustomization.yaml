@@ -9,6 +9,7 @@ resources:
   - migrate.yaml
   - app.yaml
   - frontend.yaml
+  - ingress.yaml
 
 secretGenerator:
   - name: secrets
