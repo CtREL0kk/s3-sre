@@ -13,6 +13,13 @@ spec:
       labels:
         app: app
     spec:
+      initContainers:
+        - name: wait-for-postgres
+          image: postgres:alpine
+          command: [ "/bin/sh", "-c", "until pg_isready -h postgres -p 5432; do sleep 1; done" ]
+        - name: wait-for-rustfs
+          image: alpine:latest
+          command: [ "/bin/sh", "-c", "until nc -z rustfs 9000; do echo 'Waiting for rustfs...'; sleep 1; done" ]
       containers:
         - name: app
           image: myapp-backend:latest
