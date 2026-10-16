@@ -1,0 +1,35 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vector-config
+  namespace: monitoring
+  labels:
+    app: vector
+data:
+  vector.yaml: |
+    sources:
+      kubernetes_logs:
+        type: kubernetes_logs
+    transforms:
+      parse_app_logs:
+        type: remap
+        inputs: [kubernetes_logs]
+        source: |
+          if exists(.message) {
+            if parse_json(.message, parsed) {
+              . = merge(., parsed)
+            }
+          }
+    sinks:
+      victoria_logs:
+        type: loki
+        inputs: [parse_app_logs]
+        endpoint: http://victoria-logs.monitoring.svc.cluster.local:9428/insert/loki/api/v1/push
+        encoding:
+          codec: json
+        labels:
+          app: "{{ kubernetes.pod_labels.app }}"
+          namespace: "{{ kubernetes.pod_namespace }}"
+          container: "{{ container_name }}"
+        remove_label_fields: true
+        out_of_order_action: drop
