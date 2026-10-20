@@ -15,9 +15,7 @@ spec:
       labels:
         app: victoria-logs
     spec:
-      securityContext:
-        fsGroup: 1000
-        runAsNonRoot: true
+      securityContext: {}
       containers:
         - name: victoria-logs
           image: victoriametrics/victoria-logs:v1.53.0

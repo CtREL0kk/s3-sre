@@ -12,6 +12,7 @@ spec:
     metadata:
       labels:
         app: app
+        logging: "true"
     spec:
       initContainers:
         - name: wait-for-postgres

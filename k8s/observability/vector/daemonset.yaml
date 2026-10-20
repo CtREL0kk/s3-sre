@@ -24,10 +24,13 @@ spec:
           args:
             - --config
             - /etc/vector/vector.yaml
-            - --require-healthy
+
           env:
-            - name: VECTOR_REQUIRE_HEALTHY
-              value: "true"
+            - name: VECTOR_SELF_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+
           resources:
             requests:
               cpu: 100m
@@ -35,22 +38,26 @@ spec:
             limits:
               cpu: 500m
               memory: 512Mi
+
           volumeMounts:
             - name: var-log
-              mountPath: /var/log
-              readOnly: true
-            - name: var-lib
-              mountPath: /var/lib
+              mountPath: /var/log/pods
               readOnly: true
             - name: vector-config
               mountPath: /etc/vector
+              readOnly: true
+            - name: vector-tmp
+              mountPath: /var/lib/vector
+
       volumes:
         - name: var-log
           hostPath:
-            path: /var/log
-        - name: var-lib
-          hostPath:
-            path: /var/lib
+            path: /var/log/pods
+            type: Directory
         - name: vector-config
           configMap:
             name: vector-config
+        - name: vector-tmp
+          hostPath:
+            path: /var/lib/vector
+            type: DirectoryOrCreate

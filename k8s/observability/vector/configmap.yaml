@@ -3,33 +3,66 @@ kind: ConfigMap
 metadata:
   name: vector-config
   namespace: monitoring
-  labels:
-    app: vector
 data:
   vector.yaml: |
+    data_dir: /var/lib/vector
+
     sources:
       kubernetes_logs:
         type: kubernetes_logs
+        self_node_name: "${VECTOR_SELF_NODE_NAME}"
+        extra_label_selector: "logging=true"
+
     transforms:
-      parse_app_logs:
+      parse_app_json:
         type: remap
-        inputs: [kubernetes_logs]
+        inputs:
+          - kubernetes_logs
         source: |
-          if exists(.message) {
-            if parse_json(.message, parsed) {
-              . = merge(., parsed)
-            }
+          parsed = parse_json(.message) ?? null
+          if is_object(parsed) {
+            . = merge!(., parsed)
+            del(.message)
           }
-    sinks:
+      clean_logs:
+        type: remap
+        inputs:
+          - parse_app_json
+        source: |
+          del(.file)
+          del(.source_type)
+          del(.kubernetes.container_id)
+          del(.kubernetes.container_image_id)
+          del(.kubernetes.namespace_labels)
+          del(.kubernetes.node_labels)
+          del(.kubernetes.pod_uid)
+          del(.kubernetes.pod_ips)
+          del(.kubernetes.pod_node_name)
+          del(.kubernetes.pod_owner)
+          del(.kubernetes.pod_labels)
+          del(.kubernetes.pod_owner)
+          del(.kubernetes.pod_node_name)
+          del(.stream)
+          del(.kubernetes.container_image)
+          del(.kubernetes.container_name)
+          
+    sinks:    
+      console:
+        type: console
+        inputs:
+          - kubernetes_logs
+        encoding: 
+          codec: json
       victoria_logs:
-        type: loki
-        inputs: [parse_app_logs]
-        endpoint: http://victoria-logs.monitoring.svc.cluster.local:9428/insert/loki/api/v1/push
+        type: http
+        inputs:
+          - clean_logs
+        uri: "http://victoria-logs:9428/insert/jsonline?_msg_field=msg&_time_field=timestamp"
+        method: post
+        compression: gzip 
         encoding:
           codec: json
-        labels:
-          app: "{{ kubernetes.pod_labels.app }}"
-          namespace: "{{ kubernetes.pod_namespace }}"
-          container: "{{ container_name }}"
-        remove_label_fields: true
-        out_of_order_action: drop
+        framing:
+          method: newline_delimited
+        healthcheck:
+          enabled: false
