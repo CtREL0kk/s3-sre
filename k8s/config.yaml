@@ -21,4 +21,3 @@ data:
   RUSTFS_VOLUMES: "/data"
   RUSTFS_UNSAFE_BYPASS_DISK_CHECK: "true"
   POSTGRES_DB: "mys3"
-  DATABASE_URL: "postgres://mys3:mys3@postgres:5432/mys3?sslmode=disable"
