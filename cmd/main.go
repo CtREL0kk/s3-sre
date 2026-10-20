@@ -31,7 +31,7 @@ func main() {
 		log.Fatalf("load config: %v", err)
 	}
 
-	l, err := logger.New(cfg.LogLevel, cfg.Env)
+	l, err := logger.New(cfg.LogLevel)
 	if err != nil {
 		log.Fatalf("init logger: %v", err)
 	}
@@ -57,7 +57,7 @@ func runAdmin(name string, fn func(a *app.Application, ctx context.Context) erro
 		log.Printf("%s: load config: %v", name, err)
 		return 1
 	}
-	l, err := logger.New(cfg.LogLevel, cfg.Env)
+	l, err := logger.New(cfg.LogLevel)
 	if err != nil {
 		log.Printf("%s: init logger: %v", name, err)
 		return 1

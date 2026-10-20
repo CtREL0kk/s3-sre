@@ -33,9 +33,11 @@ func (h *Objects) CreateFolder(c *gin.Context) {
 
 	o, err := h.svc.CreateFolder(c.Request.Context(), userID(c), req.ParentID, req.Name)
 	if err != nil {
+		h.logger.Errorw("failed to create folder", "error", err)
 		respondDomainError(c, err)
 		return
 	}
+	h.logger.Infow("created folder", "id", o.ID)
 	respondObject(c, http.StatusCreated, o)
 }
 
@@ -58,12 +60,14 @@ func (h *Objects) Update(c *gin.Context) {
 	ctx := c.Request.Context()
 	if req.Name != nil {
 		if err := h.svc.Rename(ctx, userID(c), id, *req.Name); err != nil {
+			h.logger.Errorw("failed to rename object", "error", err)
 			respondDomainError(c, err)
 			return
 		}
 	}
 	if req.ParentID != nil {
 		if err := h.svc.Move(ctx, userID(c), id, req.ParentID); err != nil {
+			h.logger.Errorw("failed to move object", "error", err)
 			respondDomainError(c, err)
 			return
 		}
@@ -71,9 +75,11 @@ func (h *Objects) Update(c *gin.Context) {
 
 	o, err := h.svc.Get(ctx, userID(c), id)
 	if err != nil {
+		h.logger.Errorw("failed to get object", "error", err)
 		respondDomainError(c, err)
 		return
 	}
+	h.logger.Infow("updating object", "id", id)
 	respondObject(c, http.StatusOK, o)
 }
 
@@ -90,12 +96,14 @@ func (h *Objects) Upload(c *gin.Context) {
 			respondError(c, http.StatusRequestEntityTooLarge, "file_too_large", "файл превышает лимит загрузки")
 			return
 		}
+		h.logger.Errorw("get file error", "error", err)
 		respondError(c, http.StatusBadRequest, "validation_error", "файл не передан (поле file)")
 		return
 	}
 
 	f, err := fileHeader.Open()
 	if err != nil {
+		h.logger.Errorw("failed to open file", "error", err)
 		respondError(c, http.StatusBadRequest, "validation_error", "не удалось открыть файл")
 		return
 	}
@@ -104,9 +112,11 @@ func (h *Objects) Upload(c *gin.Context) {
 	o, err := h.svc.UploadFile(c.Request.Context(), userID(c), &parentID,
 		fileHeader.Filename, fileHeader.Header.Get("Content-Type"), f, fileHeader.Size)
 	if err != nil {
+		h.logger.Errorw("failed to upload file", "error", err)
 		respondDomainError(c, err)
 		return
 	}
+	h.logger.Infow("uploaded file", "id", o.ID)
 	respondObject(c, http.StatusCreated, o)
 }
 
@@ -114,9 +124,11 @@ func (h *Objects) ListRoot(c *gin.Context) {
 	limit, offset := parsePagination(c)
 	items, total, err := h.svc.ListChildren(c.Request.Context(), userID(c), nil, limit, offset)
 	if err != nil {
+		h.logger.Errorw("failed to list objects", "error", err)
 		respondDomainError(c, err)
 		return
 	}
+	h.logger.Infow("listed objects", "count", total)
 	respondItems(c, items, total)
 }
 
@@ -128,9 +140,11 @@ func (h *Objects) ListChildren(c *gin.Context) {
 	limit, offset := parsePagination(c)
 	items, total, err := h.svc.ListChildren(c.Request.Context(), userID(c), &id, limit, offset)
 	if err != nil {
+		h.logger.Errorw("failed to list objects", "error", err)
 		respondDomainError(c, err)
 		return
 	}
+	h.logger.Infow("listed objects", "count", total)
 	respondItems(c, items, total)
 }
 
@@ -141,9 +155,11 @@ func (h *Objects) Get(c *gin.Context) {
 	}
 	o, err := h.svc.Get(c.Request.Context(), userID(c), id)
 	if err != nil {
+		h.logger.Errorw("failed to get object", "error", err)
 		respondDomainError(c, err)
 		return
 	}
+	h.logger.Infow("get object", "id", o.ID)
 	respondObject(c, http.StatusOK, o)
 }
 
@@ -160,6 +176,7 @@ func (h *Objects) Graph(c *gin.Context) {
 
 	g, err := h.svc.GetGraph(c.Request.Context(), userID(c), folderID)
 	if err != nil {
+		h.logger.Errorw("failed to get graph", "error", err)
 		respondDomainError(c, err)
 		return
 	}
@@ -208,6 +225,7 @@ func (h *Objects) Content(c *gin.Context) {
 
 	rc, o, err := h.svc.Download(c.Request.Context(), userID(c), id)
 	if err != nil {
+		h.logger.Errorw("failed to download object", "error", err)
 		respondDomainError(c, err)
 		return
 	}
@@ -232,6 +250,7 @@ func (h *Objects) Delete(c *gin.Context) {
 		respondDomainError(c, err)
 		return
 	}
+	h.logger.Infow("delete object", "id", id)
 	c.Status(http.StatusNoContent)
 }
 
@@ -248,9 +267,11 @@ func (h *Objects) SetVisibility(c *gin.Context) {
 
 	o, err := h.svc.SetVisibility(c.Request.Context(), userID(c), id, req.Visibility)
 	if err != nil {
+		h.logger.Errorw("failed to set visibility", "error", err)
 		respondDomainError(c, err)
 		return
 	}
+	h.logger.Infow("set visibility", "id", o.ID)
 	respondObject(c, http.StatusOK, o)
 }
 
@@ -261,6 +282,7 @@ func (h *Objects) ListGrants(c *gin.Context) {
 	}
 	grants, err := h.svc.ListGrants(c.Request.Context(), userID(c), id)
 	if err != nil {
+		h.logger.Errorw("failed to list grants", "error", err)
 		respondDomainError(c, err)
 		return
 	}
@@ -272,6 +294,7 @@ func (h *Objects) ListGrants(c *gin.Context) {
 			CreatedAt:  g.CreatedAt,
 		})
 	}
+	h.logger.Infow("listed grants", "count", len(out))
 	respondJSON(c, http.StatusOK, dto.GrantsResponse{Items: out})
 }
 
@@ -288,9 +311,11 @@ func (h *Objects) SetGrant(c *gin.Context) {
 
 	g, err := h.svc.SetGrant(c.Request.Context(), userID(c), id, req.GranteeID, req.Permission)
 	if err != nil {
+		h.logger.Errorw("failed to set grant", "error", err)
 		respondDomainError(c, err)
 		return
 	}
+	h.logger.Infow("set grant", "id", g.ID)
 	respondJSON(c, http.StatusCreated, dto.Grant{
 		GranteeID:  g.GranteeID,
 		Permission: g.Permission,
@@ -308,9 +333,11 @@ func (h *Objects) DeleteGrant(c *gin.Context) {
 		return
 	}
 	if err := h.svc.DeleteGrant(c.Request.Context(), userID(c), id, granteeID); err != nil {
+		h.logger.Errorw("failed to delete grant", "error", err)
 		respondDomainError(c, err)
 		return
 	}
+	h.logger.Infow("delete grant", "id", id)
 	c.Status(http.StatusNoContent)
 }
 
@@ -322,6 +349,7 @@ func (h *Objects) PublicContent(c *gin.Context) {
 
 	rc, o, err := h.svc.DownloadPublic(c.Request.Context(), id)
 	if err != nil {
+		h.logger.Errorw("failed to download public object", "error", err)
 		respondDomainError(c, err)
 		return
 	}

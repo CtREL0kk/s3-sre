@@ -12,6 +12,7 @@ spec:
     metadata:
       labels:
         app: app
+        logging: "true"
     spec:
       initContainers:
         - name: wait-for-postgres
@@ -31,7 +32,7 @@ spec:
                 name: app-config
           ports:
             - containerPort: 8080
-              
+
           startupProbe:
             httpGet:
               path: /healthz
@@ -44,7 +45,7 @@ spec:
             httpGet:
               path: /healthz
               port: 8080
-            periodSeconds: 10
+            periodSeconds: 15
             timeoutSeconds: 2
             failureThreshold: 3
 
@@ -52,7 +53,7 @@ spec:
             httpGet:
               path: /readyz
               port: 8080
-            periodSeconds: 5
+            periodSeconds: 15
             timeoutSeconds: 2
             failureThreshold: 3
 ---
