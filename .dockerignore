@@ -7,3 +7,4 @@ docs
 *.md
 build/Dockerfile
 docker-compose.yaml
+k8s
