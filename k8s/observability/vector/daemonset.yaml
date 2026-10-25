@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: vector
+  namespace: monitoring
+  labels:
+    app: vector
+spec:
+  selector:
+    matchLabels:
+      app: vector
+  template:
+    metadata:
+      labels:
+        app: vector
+    spec:
+      serviceAccountName: vector
+      tolerations:
+        - operator: Exists
+      containers:
+        - name: vector
+          image: timberio/vector:0.41.1-alpine
+          imagePullPolicy: IfNotPresent
+          args:
+            - --config
+            - /etc/vector/vector.yaml
+
+          env:
+            - name: VECTOR_SELF_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+
+          volumeMounts:
+            - name: var-log
+              mountPath: /var/log/pods
+              readOnly: true
+            - name: vector-config
+              mountPath: /etc/vector
+              readOnly: true
+            - name: vector-tmp
+              mountPath: /var/lib/vector
+
+      volumes:
+        - name: var-log
+          hostPath:
+            path: /var/log/pods
+            type: Directory
+        - name: vector-config
+          configMap:
+            name: vector-config
+        - name: vector-tmp
+          hostPath:
+            path: /var/lib/vector
+            type: DirectoryOrCreate

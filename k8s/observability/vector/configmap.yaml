@@ -1,0 +1,68 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vector-config
+  namespace: monitoring
+data:
+  vector.yaml: |
+    data_dir: /var/lib/vector
+
+    sources:
+      kubernetes_logs:
+        type: kubernetes_logs
+        self_node_name: "${VECTOR_SELF_NODE_NAME}"
+        extra_label_selector: "logging=true"
+
+    transforms:
+      parse_app_json:
+        type: remap
+        inputs:
+          - kubernetes_logs
+        source: |
+          parsed = parse_json(.message) ?? null
+          if is_object(parsed) {
+            . = merge!(., parsed)
+            del(.message)
+          }
+      clean_logs:
+        type: remap
+        inputs:
+          - parse_app_json
+        source: |
+          del(.file)
+          del(.source_type)
+          del(.kubernetes.container_id)
+          del(.kubernetes.container_image_id)
+          del(.kubernetes.namespace_labels)
+          del(.kubernetes.node_labels)
+          del(.kubernetes.pod_uid)
+          del(.kubernetes.pod_ips)
+          del(.kubernetes.pod_node_name)
+          del(.kubernetes.pod_owner)
+          del(.kubernetes.pod_labels)
+          del(.kubernetes.pod_owner)
+          del(.kubernetes.pod_node_name)
+          del(.stream)
+          del(.kubernetes.container_image)
+          del(.kubernetes.container_name)
+          
+    sinks:    
+      console:
+        type: console
+        inputs:
+          - kubernetes_logs
+        encoding: 
+          codec: json
+      victoria_logs:
+        type: http
+        inputs:
+          - clean_logs
+        uri: "http://victoria-logs:9428/insert/jsonline?_msg_field=msg&_time_field=timestamp"
+        method: post
+        compression: gzip 
+        encoding:
+          codec: json
+        framing:
+          method: newline_delimited
+        healthcheck:
+          enabled: false
