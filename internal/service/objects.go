@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -17,22 +18,46 @@ import (
 
 const indexLimit = 2 << 20
 
-type ObjectGraph struct {
-	Nodes []domain.Object
-	Edges []domain.ObjectLink
-}
+type (
+	MetricsRecorder interface {
+		RecordUpload(success bool, size int64, duration time.Duration)
+		RecordDownload(success bool)
+		RecordFolder()
+		RecordShare()
+	}
+	ObjectGraph struct {
+		Nodes []domain.Object
+		Edges []domain.ObjectLink
+	}
+	ObjectService struct {
+		objects *object.ObjectRepo
+		grants  *grant.GrantRepo
+		links   *link.LinkRepo
+		s3      *storage.S3
+		perms   *PermissionService
+		mode    string
+		metrics MetricsRecorder
+	}
+)
 
-type ObjectService struct {
-	objects *object.ObjectRepo
-	grants  *grant.GrantRepo
-	links   *link.LinkRepo
-	s3      *storage.S3
-	perms   *PermissionService
-	mode    string
-}
-
-func NewObjectService(objects *object.ObjectRepo, grants *grant.GrantRepo, links *link.LinkRepo, s3 *storage.S3, perms *PermissionService, mode string) *ObjectService {
-	return &ObjectService{objects: objects, grants: grants, links: links, s3: s3, perms: perms, mode: mode}
+func NewObjectService(
+	objects *object.ObjectRepo,
+	grants *grant.GrantRepo,
+	links *link.LinkRepo,
+	s3 *storage.S3,
+	perms *PermissionService,
+	mode string,
+	metricsRecorder MetricsRecorder,
+) *ObjectService {
+	return &ObjectService{
+		objects: objects,
+		grants:  grants,
+		links:   links,
+		s3:      s3,
+		perms:   perms,
+		mode:    mode,
+		metrics: metricsRecorder,
+	}
 }
 
 func (s *ObjectService) requireWritable() error {
@@ -63,10 +88,19 @@ func (s *ObjectService) CreateFolder(ctx context.Context, actorID uuid.UUID, par
 	if err := s.objects.Create(ctx, o); err != nil {
 		return nil, err
 	}
+	if s.metrics != nil {
+		s.metrics.RecordFolder()
+	}
 	return o, nil
 }
 
-func (s *ObjectService) UploadFile(ctx context.Context, actorID uuid.UUID, parentID *uuid.UUID, name, contentType string, body io.Reader, size int64) (*domain.Object, error) {
+func (s *ObjectService) UploadFile(ctx context.Context, actorID uuid.UUID, parentID *uuid.UUID, name, contentType string, body io.Reader, size int64) (obj *domain.Object, retErr error) {
+	started := time.Now()
+	defer func() {
+		if s.metrics != nil {
+			s.metrics.RecordUpload(retErr == nil, size, time.Since(started))
+		}
+	}()
 	if err := s.requireWritable(); err != nil {
 		return nil, err
 	}
@@ -241,7 +275,12 @@ func (s *ObjectService) listChildrenAccessible(ctx context.Context, actorID uuid
 	return items, total, nil
 }
 
-func (s *ObjectService) Download(ctx context.Context, actorID, id uuid.UUID) (io.ReadCloser, *domain.Object, error) {
+func (s *ObjectService) Download(ctx context.Context, actorID, id uuid.UUID) (body io.ReadCloser, obj *domain.Object, retErr error) {
+	defer func() {
+		if s.metrics != nil {
+			s.metrics.RecordDownload(retErr == nil)
+		}
+	}()
 	o, err := s.objects.GetByID(ctx, id)
 	if err != nil {
 		return nil, nil, err
@@ -252,7 +291,12 @@ func (s *ObjectService) Download(ctx context.Context, actorID, id uuid.UUID) (io
 	return s.openFile(ctx, o)
 }
 
-func (s *ObjectService) DownloadPublic(ctx context.Context, id uuid.UUID) (io.ReadCloser, *domain.Object, error) {
+func (s *ObjectService) DownloadPublic(ctx context.Context, id uuid.UUID) (body io.ReadCloser, obj *domain.Object, retErr error) {
+	defer func() {
+		if s.metrics != nil {
+			s.metrics.RecordDownload(retErr == nil)
+		}
+	}()
 	o, err := s.objects.GetByID(ctx, id)
 	if err != nil {
 		return nil, nil, err
@@ -379,6 +423,9 @@ func (s *ObjectService) SetGrant(ctx context.Context, actorID, id, granteeID uui
 	}
 	if err := s.grants.Upsert(ctx, g); err != nil {
 		return nil, err
+	}
+	if s.metrics != nil {
+		s.metrics.RecordShare()
 	}
 	return g, nil
 }
