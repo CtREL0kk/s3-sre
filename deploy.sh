@@ -6,8 +6,7 @@ minikube image build -t myapp-frontend:latest -f Dockerfile frontend/
 minikube image build -t myapp-prober:latest -f Dockerfile prober/
 
 kubectl apply -k k8s/
-kubectl wait --for=condition=complete job/migrate -n app --timeout=180s
-kubectl rollout restart deployment/slo-prober -n app
+kubectl wait --for=condition=complete job/migrate -n app --timeout=60s
 
 kubectl rollout status deployment/app -n app --timeout=60s
 kubectl rollout status deployment/frontend -n app --timeout=60s
