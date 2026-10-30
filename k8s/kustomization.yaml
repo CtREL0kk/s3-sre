@@ -10,6 +10,7 @@ resources:
   - app.yaml
   - frontend.yaml
   - ingress.yaml
+  - prober.yaml
 
 secretGenerator:
   - name: secrets

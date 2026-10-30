@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"myS3/internal/httpapi/metrics"
 	"net/http"
 	"time"
 
@@ -31,11 +32,13 @@ import (
 )
 
 type Application struct {
-	cfg    *config.Config
-	logger *zap.SugaredLogger
-	server *http.Server
-	pool   *pgxpool.Pool
-	s3     *storage.S3
+	cfg             *config.Config
+	logger          *zap.SugaredLogger
+	server          *http.Server
+	metricsServer   *http.Server
+	pool            *pgxpool.Pool
+	s3              *storage.S3
+	metricsRecorder *metrics.S3WrapperMetrics
 
 	userRepo    *user.UserRepo
 	refreshRepo *refresh.RefreshRepo
@@ -62,11 +65,12 @@ func (a *Application) Init(ctx context.Context) error {
 	a.objectRepo = object.NewObjectRepo(a.pool)
 	a.grantRepo = grant.NewGrantRepo(a.pool)
 	a.linkRepo = link.NewLinkRepo(a.pool)
+	a.metricsRecorder = metrics.NewS3WrapperMetrics()
 
 	manager := auth.NewManager(a.cfg.JWT.Secret, a.cfg.JWT.AccessTTL)
 	authSvc := service.NewAuthService(a.userRepo, a.refreshRepo, manager, a.cfg.JWT.RefreshTTL)
 	perms := service.NewPermissionService(a.objectRepo, a.grantRepo)
-	objectSvc := service.NewObjectService(a.objectRepo, a.grantRepo, a.linkRepo, a.s3, perms, a.cfg.S3.Mode)
+	objectSvc := service.NewObjectService(a.objectRepo, a.grantRepo, a.linkRepo, a.s3, perms, a.cfg.S3.Mode, a.metricsRecorder)
 
 	router := httpapi.NewRouter(httpapi.Deps{
 		Logger:        a.logger,
@@ -88,14 +92,20 @@ func (a *Application) Init(ctx context.Context) error {
 		WriteTimeout: 60 * time.Second,
 		IdleTimeout:  120 * time.Second,
 	}
+	a.metricsServer = metrics.NewServer()
 	return nil
 }
 
 func (a *Application) Run(ctx context.Context) error {
-	errCh := make(chan error, 1)
+	errCh := make(chan error, 2)
 	go func() {
 		a.logger.Infow("starting server", "addr", a.server.Addr)
 		errCh <- a.server.ListenAndServe()
+	}()
+
+	go func() {
+		a.logger.Infow("starting metrics server", "addr", a.metricsServer.Addr)
+		errCh <- a.metricsServer.ListenAndServe()
 	}()
 
 	select {
@@ -113,6 +123,10 @@ func (a *Application) Run(ctx context.Context) error {
 	if err := a.server.Shutdown(shutdownCtx); err != nil {
 		return fmt.Errorf("graceful shutdown: %w", err)
 	}
+	if err := a.metricsServer.Shutdown(shutdownCtx); err != nil {
+		return fmt.Errorf("metrics graceful shutdown: %w", err)
+	}
+
 	a.pool.Close()
 	a.logger.Infow("server stopped")
 	return nil

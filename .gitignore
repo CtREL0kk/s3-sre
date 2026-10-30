@@ -2,3 +2,7 @@
 k8s/.env.k8s
 
 .idea/
+
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
