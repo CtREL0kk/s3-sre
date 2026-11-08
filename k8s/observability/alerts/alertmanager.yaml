@@ -1,0 +1,13 @@
+global:
+  resolve_timeout: 5m
+route:
+  receiver: local-notifications
+  group_by: [alertname, severity]
+  group_wait: 10s
+  group_interval: 30s
+  repeat_interval: 1m
+receivers:
+  - name: local-notifications
+    webhook_configs:
+      - url: http://alert-notifications:8080/
+        send_resolved: true

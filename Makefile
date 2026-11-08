@@ -28,3 +28,11 @@ up:
 
 down:
 	docker compose down
+
+.PHONY: metrics
+metrics:
+	helm repo add vm https://victoriametrics.github.io/helm-charts/ --force-update
+	helm repo update vm
+	helm upgrade --install vmsingle vm/victoria-metrics-single \
+		--version 0.49.0 --namespace monitoring --create-namespace \
+		-f k8s/observability/victoria-metrics/values.yaml --wait --timeout 180s

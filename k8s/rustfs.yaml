@@ -37,6 +37,17 @@ spec:
                 name: app-config
             - secretRef:
                 name: secrets
+          env:
+            - name: RUSTFS_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: secrets
+                  key: S3_ACCESS_KEY
+            - name: RUSTFS_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: secrets
+                  key: S3_SECRET_KEY
           ports:
             - containerPort: 9000
             - containerPort: 9001

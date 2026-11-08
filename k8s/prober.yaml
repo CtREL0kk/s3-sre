@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: slo-prober
+  namespace: app
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: slo-prober
+  template:
+    metadata:
+      labels:
+        app: slo-prober
+    spec:
+      containers:
+        - name: prober
+          image: myapp-prober:latest
+          imagePullPolicy: Never
+          env:
+            - name: PROBE_URL
+              value: http://app
+            - name: PROBE_LOGIN
+              valueFrom:
+                secretKeyRef:
+                  name: secrets
+                  key: PROBE_LOGIN
+            - name: PROBE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: secrets
+                  key: PROBE_PASSWORD
+          resources:
+            requests:
+              cpu: 20m
+              memory: 32Mi
+            limits:
+              memory: 128Mi

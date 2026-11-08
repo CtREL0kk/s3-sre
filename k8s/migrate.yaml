@@ -1,6 +1,8 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
+  labels:
+    deploy-stage: migration
   name: migrate
   namespace: app
 spec:
