@@ -9,3 +9,15 @@ resources:
   - vector/rbac.yaml
   - vector/configmap.yaml
   - vector/daemonset.yaml
+  - alerts/vmalert.yaml
+
+configMapGenerator:
+  - name: s3-alert-rules
+    files:
+      - alerts/rules.yaml
+  - name: s3-alertmanager-config
+    files:
+      - alerts/alertmanager.yaml
+  - name: s3-alert-receiver
+    files:
+      - alerts/receiver.py
