@@ -28,6 +28,7 @@ spec:
               memory: 32Mi
             limits:
               memory: 256Mi
+              cpu: 200m
           volumeMounts:
             - name: config
               mountPath: /config
@@ -77,6 +78,7 @@ spec:
               memory: 32Mi
             limits:
               memory: 256Mi
+              cpu: 200m
           volumeMounts:
             - name: config
               mountPath: /config
@@ -126,6 +128,7 @@ spec:
               memory: 32Mi
             limits:
               memory: 256Mi
+              cpu: 200m
           volumeMounts:
             - name: config
               mountPath: /config

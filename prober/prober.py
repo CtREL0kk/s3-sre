@@ -2,6 +2,8 @@
 import logging
 import os
 import time
+import threading
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 
 import requests
@@ -12,6 +14,22 @@ PASSWORD = os.environ['PROBE_PASSWORD']
 INTERVAL = float(os.getenv('PROBE_INTERVAL', '10'))
 TIMEOUT = 8
 PROBE_FILE = Path(__file__).with_name('bigtxtfile.txt')
+
+
+probe_total = 0
+probe_success = 0
+
+class MetricsHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        if self.path != '/metrics':
+            self.send_error(404)
+            return
+        body = (f'# TYPE s3probe_cycles_total counter\ns3probe_cycles_total {probe_total}\n'
+                f'# TYPE s3probe_cycles_success_total counter\ns3probe_cycles_success_total {probe_success}\n')
+        self.send_response(200)
+        self.send_header('Content-Type', 'text/plain; version=0.0.4')
+        self.end_headers()
+        self.wfile.write(body.encode())
 
 
 def api_request(session, method, path, **kwargs):
@@ -48,6 +66,9 @@ def check_upload_and_download(session, folder_id):
 
 
 def main():
+    global probe_total, probe_success
+    server = HTTPServer(("0.0.0.0", 8082), MetricsHandler)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
     logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
     folder_id = None
     while True:
@@ -67,8 +88,11 @@ def main():
                     logging.info('Created probe folder %s', folder_id)
 
                 check_upload_and_download(session, folder_id)
+                probe_success += 1
         except (requests.RequestException, ValueError, KeyError) as error:
             logging.error('Probe failed: %s', error)
+        finally:
+            probe_total += 1
         time.sleep(INTERVAL)
 
 

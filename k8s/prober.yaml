@@ -3,6 +3,8 @@ kind: Deployment
 metadata:
   name: slo-prober
   namespace: app
+  labels:
+    app: slo-prober
 spec:
   replicas: 1
   strategy:
@@ -14,6 +16,10 @@ spec:
     metadata:
       labels:
         app: slo-prober
+      annotations:
+        prometheus.io/scrape: 'true'
+        prometheus.io/port: '8082'
+        prometheus.io/path: /metrics
     spec:
       containers:
         - name: prober
@@ -38,3 +44,12 @@ spec:
               memory: 32Mi
             limits:
               memory: 128Mi
+              cpu: 200m
+          ports:
+          - containerPort: 8082
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: 8082
+            initialDelaySeconds: 3
+            periodSeconds: 10

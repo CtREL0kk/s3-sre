@@ -10,6 +10,7 @@ resources:
   - vector/configmap.yaml
   - vector/daemonset.yaml
   - alerts/vmalert.yaml
+  - grafana/deployment.yaml
 
 configMapGenerator:
   - name: s3-alert-rules
@@ -21,3 +22,14 @@ configMapGenerator:
   - name: s3-alert-receiver
     files:
       - alerts/receiver.py
+
+  - name: grafana-datasource
+    files:
+      - grafana/provisioning.yaml
+  - name: grafana-providers
+    files:
+      - grafana/providers.yaml
+  - name: grafana-dashboards
+    files:
+      - grafana/application.json
+      - grafana/postgres.json

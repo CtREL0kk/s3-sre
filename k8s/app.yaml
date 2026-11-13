@@ -24,9 +24,23 @@ spec:
         - name: wait-for-postgres
           image: postgres:alpine
           command: [ "/bin/sh", "-c", "until pg_isready -h postgres -p 5432; do sleep 1; done" ]
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
         - name: wait-for-rustfs
           image: alpine:latest
           command: [ "/bin/sh", "-c", "until nc -z rustfs 9000; do echo 'Waiting for rustfs...'; sleep 1; done" ]
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
       containers:
         - name: app
           image: myapp-backend:latest
@@ -63,6 +77,13 @@ spec:
             periodSeconds: 15
             timeoutSeconds: 2
             failureThreshold: 3
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: '1'
+              memory: 512Mi
 ---
 apiVersion: v1
 kind: Service
