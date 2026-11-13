@@ -1,0 +1,677 @@
+{
+  "title": "S3 Wrapper - overview",
+  "uid": "s3-wrapper",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "15s",
+  "time": {
+    "from": "now-30m",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Backend status",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "up{namespace=\"app\",app=\"app\"}",
+          "legendFormat": "{{pod}}",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "max": 1,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "DOWN",
+                  "color": "red"
+                },
+                "1": {
+                  "text": "UP",
+                  "color": "green"
+                }
+              }
+            },
+            {
+              "type": "special",
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "NO DATA",
+                  "color": "gray"
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "textMode": "value_and_name",
+        "graphMode": "none",
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        }
+      }
+    },
+    {
+      "id": 2,
+      "title": "Upload + download attempts per second",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(s3wrapper_uploads_total{namespace=\"app\",app=\"app\"}[5m])) + sum(rate(s3wrapper_downloads_total{namespace=\"app\",app=\"app\"}[5m]))",
+          "legendFormat": "File operation attempts/s"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops"
+        },
+        "overrides": []
+      },
+      "description": "Sum of upload and download-open attempts per second, including errors, averaged over 5 minutes. Not total HTTP RPS: login, folders and other endpoints are excluded."
+    },
+    {
+      "id": 3,
+      "title": "Upload and Download errors per second",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (__name__) (rate({__name__=~\"s3wrapper_(uploads|downloads)_total\",namespace=\"app\",app=\"app\",status=\"error\"}[5m]))",
+          "legendFormat": "{{__name__}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 4,
+      "title": "uploads success / 5m",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "100 * sum(increase(s3wrapper_uploads_total{namespace=\"app\",app=\"app\",status=\"success\"}[5m])) / sum(increase(s3wrapper_uploads_total{namespace=\"app\",app=\"app\"}[5m]))",
+          "legendFormat": "uploads success / 5m"
+        },
+        {
+          "refId": "B",
+          "expr": "vector(99.5)",
+          "legendFormat": "SLO"
+        },
+        {
+          "refId": "C",
+          "expr": "vector(99)",
+          "legendFormat": "SLA"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 5,
+      "title": "downloads success / 5m",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 16,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "100 * sum(increase(s3wrapper_downloads_total{namespace=\"app\",app=\"app\",status=\"success\"}[5m])) / sum(increase(s3wrapper_downloads_total{namespace=\"app\",app=\"app\"}[5m]))",
+          "legendFormat": "downloads success / 5m"
+        },
+        {
+          "refId": "B",
+          "expr": "vector(99.5)",
+          "legendFormat": "SLO"
+        },
+        {
+          "refId": "C",
+          "expr": "vector(99)",
+          "legendFormat": "SLA"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 6,
+      "title": "Successful upload p95 / 5m",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 16,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.95,sum by(le)(rate(s3wrapper_upload_duration_seconds_bucket{namespace=\"app\",app=\"app\",status=\"success\"}[5m])))",
+          "legendFormat": "{{pod}} {{status}}"
+        },
+        {
+          "refId": "B",
+          "expr": "vector(1)",
+          "legendFormat": "SLO"
+        },
+        {
+          "refId": "C",
+          "expr": "vector(2)",
+          "legendFormat": "SLA"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 8,
+      "title": "Probe SLA: successful full cycles / 30d",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 24,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "100 * sum(increase(s3probe_cycles_success_total{namespace=\"app\",app=\"slo-prober\"}[30d])) / sum(increase(s3probe_cycles_total{namespace=\"app\",app=\"slo-prober\"}[30d]))",
+          "legendFormat": "Probe SLA: successful full cycles / 30d"
+        },
+        {
+          "refId": "B",
+          "expr": "vector(99)",
+          "legendFormat": "SLA target 99%"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 9,
+      "title": "Go goroutines",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 24,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(go_goroutines{namespace=\"app\",app=\"app\"})",
+          "legendFormat": "Total goroutines"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 10,
+      "title": "Go heap / process RSS",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 32,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (__name__) ({__name__=~\"go_memstats_heap_alloc_bytes|process_resident_memory_bytes\",namespace=\"app\",app=\"app\"})",
+          "legendFormat": "{{__name__}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 11,
+      "title": "CPU used (cores)",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 32,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(process_cpu_seconds_total{namespace=\"app\",app=\"app\"}[5m]))",
+          "legendFormat": "Total CPU cores"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 12,
+      "title": "Average GC pause",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 40,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(go_gc_duration_seconds_sum{namespace=\"app\",app=\"app\"}[5m])) / sum(rate(go_gc_duration_seconds_count{namespace=\"app\",app=\"app\"}[5m]))",
+          "legendFormat": "Average GC pause"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 13,
+      "title": "Probe status",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 40,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "up{namespace=\"app\",app=\"slo-prober\"}",
+          "legendFormat": "{{pod}}",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "max": 1,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "DOWN",
+                  "color": "red"
+                },
+                "1": {
+                  "text": "UP",
+                  "color": "green"
+                }
+              }
+            },
+            {
+              "type": "special",
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "NO DATA",
+                  "color": "gray"
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "textMode": "value_and_name",
+        "graphMode": "none",
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        }
+      }
+    },
+    {
+      "id": 14,
+      "title": "Uploaded file size p50 / p95 / p99",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 48,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.5, sum by (le) (rate(s3wrapper_file_size_bytes_bucket{namespace=\"app\",app=\"app\"}[5m])))",
+          "legendFormat": "p50"
+        },
+        {
+          "refId": "B",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(s3wrapper_file_size_bytes_bucket{namespace=\"app\",app=\"app\"}[5m])))",
+          "legendFormat": "p95"
+        },
+        {
+          "refId": "C",
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(s3wrapper_file_size_bytes_bucket{namespace=\"app\",app=\"app\"}[5m])))",
+          "legendFormat": "p99"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "min": 0
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 15,
+      "title": "Average uploaded file size",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 48,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(s3wrapper_file_size_bytes_sum{namespace=\"app\",app=\"app\"}[5m])) / sum(rate(s3wrapper_file_size_bytes_count{namespace=\"app\",app=\"app\"}[5m]))",
+          "legendFormat": "mean"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "min": 0
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 16,
+      "title": "Uploaded bytes per second",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 56,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(s3wrapper_file_size_bytes_sum{namespace=\"app\",app=\"app\"}[5m]))",
+          "legendFormat": "bytes/s"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps",
+          "min": 0
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 17,
+      "title": "S3 storage free space",
+      "type": "stat",
+      "description": "Space available for writing on the filesystem backing RustFS /data. Shared filesystem in Minikube; not remaining PVC or bucket quota.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 56,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "node_filesystem_avail_bytes{namespace=\"app\",app=\"rustfs\",mountpoint=\"/data\"}",
+          "legendFormat": "{{pod}} {{mountpoint}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "min": 0
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 18,
+      "title": "S3 storage free space (%)",
+      "description": "Available bytes / filesystem size for RustFS /data. Minikube hostPath may share this filesystem with other PVCs; this is not a 10 GiB quota.",
+      "type": "gauge",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 64,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "100 * node_filesystem_avail_bytes{namespace=\"app\",app=\"rustfs\",mountpoint=\"/data\"} / node_filesystem_size_bytes{namespace=\"app\",app=\"rustfs\",mountpoint=\"/data\"}",
+          "legendFormat": "{{pod}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 10
+              },
+              {
+                "color": "green",
+                "value": 20
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    }
+  ],
+  "tags": [
+    "s3-wrapper"
+  ]
+}

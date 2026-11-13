@@ -1,0 +1,42 @@
+groups:
+  - name: s3-wrapper
+    interval: 15s
+    rules:
+      - alert: UploadErrorsHigh
+        expr: (sum(rate(s3wrapper_uploads_total{namespace="app",app="app",status="error"}[5m])) / sum(rate(s3wrapper_uploads_total{namespace="app",app="app"}[5m])) > 0.05) and (sum(increase(s3wrapper_uploads_total{namespace="app",app="app"}[5m])) >= 5)
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: Высокая доля ошибок публикации
+          description: Более 5% публикаций завершаются ошибкой в течение 1 минуты
+      - alert: UploadLatencyHigh
+        expr: histogram_quantile(0.95, sum by (le) (rate(s3wrapper_upload_duration_seconds_bucket{namespace="app",app="app",status="success"}[5m]))) > 1
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: Высокая задержка публикаций
+          description: >-
+            p95 времени успешной публикации составляет
+            {{ printf "%.2f" $value }} с
+      - alert: GoGoroutinesHigh
+        expr: go_goroutines{namespace="app",app="app"} > 200
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: Высокое количество горутин
+          description: >-
+            Pod {{ $labels.pod }}:
+            {{ printf "%.0f" $value }} goroutine
+      - alert: GoHeapHigh
+        expr: go_memstats_heap_alloc_bytes{namespace="app",app="app"} > 134217728
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: Высокое потребление heap-памяти
+          description: >-
+            Pod {{ $labels.pod }}:
+            {{ printf "%.0f" $value }} байт (порог 134217728 байт = 128 МиБ)

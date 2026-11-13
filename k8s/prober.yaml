@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: slo-prober
+  namespace: app
+  labels:
+    app: slo-prober
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: slo-prober
+  template:
+    metadata:
+      labels:
+        app: slo-prober
+      annotations:
+        prometheus.io/scrape: 'true'
+        prometheus.io/port: '8082'
+        prometheus.io/path: /metrics
+    spec:
+      containers:
+        - name: prober
+          image: myapp-prober:latest
+          imagePullPolicy: Never
+          env:
+            - name: PROBE_URL
+              value: http://app
+            - name: PROBE_LOGIN
+              valueFrom:
+                secretKeyRef:
+                  name: secrets
+                  key: PROBE_LOGIN
+            - name: PROBE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: secrets
+                  key: PROBE_PASSWORD
+          resources:
+            requests:
+              cpu: 20m
+              memory: 32Mi
+            limits:
+              memory: 128Mi
+              cpu: 200m
+          ports:
+          - containerPort: 8082
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: 8082
+            initialDelaySeconds: 3
+            periodSeconds: 10

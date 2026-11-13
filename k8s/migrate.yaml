@@ -1,6 +1,8 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
+  labels:
+    deploy-stage: migration
   name: migrate
   namespace: app
 spec:
@@ -14,6 +16,13 @@ spec:
         - name: wait-for-postgres
           image: postgres:alpine
           command: [ "/bin/sh", "-c", "until pg_isready -h postgres -p 5432; do sleep 1; done" ]
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
       containers:
         - name: migrate
           image: myapp-backend:latest
@@ -24,4 +33,11 @@ spec:
                 name: app-config
             - secretRef:
                 name: secrets
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
       restartPolicy: Never
